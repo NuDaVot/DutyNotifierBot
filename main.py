@@ -79,24 +79,48 @@ async def fetch_csv(url: str) -> list:
 
 
 async def get_duty_info(shift_label: str) -> tuple:
-    """Получает имя дежурного и его телефон по смене."""
+    """Получает имя дежурного и его телефон по смене (день/ночь)."""
     try:
         schedule_rows = await fetch_csv(SCHEDULE_URL)
-        today_str = datetime.datetime.now().strftime("%d.%m.%Y")
+        today = datetime.datetime.now()
+        today_str = today.strftime("%d.%m.%Y")
+        weekday = today.strftime("%A").lower()  # Получаем день недели на английском
+        weekday_ru = {
+            "monday": "Понедельник",
+            "tuesday": "Вторник",
+            "wednesday": "Среда",
+            "thursday": "Четверг",
+            "friday": "Пятница",
+            "saturday": "Суббота",
+            "sunday": "Воскресенье"
+        }[weekday]  # Преобразуем в русский язык
+
         duty_name = None
 
+        # Ищем период, куда попадает сегодняшняя дата
         for row in schedule_rows:
-            if "Период" in row:
-                parts = row["Период"].split()
-                if len(parts) >= 2:
-                    date_part, shift_part = parts[0], parts[1]
-                    if date_part == today_str and shift_part == shift_label:
-                        duty_name = row["Дежурный"].strip()
-                        break
+            if "Период" in row and row["Период"]:
+                try:
+                    period_start, period_end = row["Период"].split("-")
+                    period_start = datetime.datetime.strptime(period_start.strip(), "%d.%m.%Y")
+                    period_end = datetime.datetime.strptime(period_end.strip(), "%d.%m.%Y")
+
+                    if period_start <= today <= period_end:
+                        break  # Нашли нужный период, переходим к поиску смены
+                except ValueError:
+                    continue  # Пропускаем некорректный формат
+
+        # Ищем нужного дежурного
+        for row in schedule_rows:
+            shift_column = f"{weekday_ru} {shift_label}"  # Формируем название колонки, например, "Среда день"
+            if shift_column in row.values():
+                duty_name = row['Дежурный'].strip()
+                break
 
         if not duty_name:
             return None, None
 
+        # Получаем телефон дежурного
         duty_rows = await fetch_csv(DUTY_PERSONNEL_URL)
         duty_phone = None
         for row in duty_rows:
@@ -105,6 +129,7 @@ async def get_duty_info(shift_label: str) -> tuple:
                 break
 
         return duty_name, duty_phone
+
     except Exception as e:
         logging.error(f"Ошибка при получении дежурного: {e}")
         await send_admin_error(f"При получении дежурного: {e}")
@@ -116,8 +141,8 @@ async def send_scheduled_messages():
     while True:
         now = datetime.datetime.now()
 
-        if (now.hour == 9 and now.minute == 30) or (now.hour == 21 and now.minute == 30):
-            shift_label = "День" if now.hour == 9 else "Ночь"
+        if (now.hour == 18) or (now.hour == 21 and now.minute == 30):
+            shift_label = "день" if now.hour == 9 else "ночь"
             duty_name, duty_phone = await get_duty_info(shift_label)
             start_message = "Сегодня с 10:00 до 22:00,\n" if shift_label == "День" else "Сегодня с 22:00 до 10:00,\n"
             if duty_name and duty_phone:
@@ -146,7 +171,7 @@ async def send_scheduled_messages():
                 await send_admin_error("Информация о дежурном не найдена.")
                 logging.warning("Информация о дежурном не найдена. Сообщение отправлено админу.")
 
-        await asyncio.sleep(60)  # Задержка 1 минута
+        await asyncio.sleep(20)  # Задержка 1 минута
 
 
 async def main():
