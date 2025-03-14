@@ -171,7 +171,7 @@ async def send_scheduled_messages():
                 await send_admin_error("Информация о дежурном не найдена.")
                 logging.warning("Информация о дежурном не найдена. Сообщение отправлено админу.")
 
-        await asyncio.sleep(20)  # Задержка 1 минута
+        await asyncio.sleep(60)  # Задержка 1 минута
 
 
 async def main():
