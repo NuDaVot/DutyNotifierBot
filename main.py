@@ -61,7 +61,7 @@ async def handle_my_chat_member(update: types.ChatMemberUpdated):
                 logging.info(f"Добавлен новый чат: {update.chat.title} (ID: {update.chat.id})")
     except Exception as e:
         logging.error(f"Ошибка при добавлении чата: {e}")
-        await send_admin_error(f"Ошибка при добавлении чата: {e}")
+        await send_admin_error(f"При добавлении чата: {e}")
 
 
 async def fetch_csv(url: str) -> list:
@@ -74,7 +74,7 @@ async def fetch_csv(url: str) -> list:
         return [row for row in reader]
     except Exception as e:
         logging.error(f"Ошибка при загрузке CSV-данных: {e}")
-        await send_admin_error(f"Ошибка при загрузке CSV: {e}")
+        await send_admin_error(f"При загрузке CSV: {e}")
         return []
 
 
@@ -86,8 +86,8 @@ async def get_duty_info(shift_label: str) -> tuple:
         duty_name = None
 
         for row in schedule_rows:
-            if "Дата" in row:
-                parts = row["Дата"].split()
+            if "Период" in row:
+                parts = row["Период"].split()
                 if len(parts) >= 2:
                     date_part, shift_part = parts[0], parts[1]
                     if date_part == today_str and shift_part == shift_label:
@@ -107,7 +107,7 @@ async def get_duty_info(shift_label: str) -> tuple:
         return duty_name, duty_phone
     except Exception as e:
         logging.error(f"Ошибка при получении дежурного: {e}")
-        await send_admin_error(f"Ошибка при получении дежурного: {e}")
+        await send_admin_error(f"При получении дежурного: {e}")
         return None, None
 
 
@@ -141,7 +141,7 @@ async def send_scheduled_messages():
                                     continue
                 except Exception as e:
                     logging.error(f"Ошибка при отправке сообщений в чаты: {e}")
-                    await send_admin_error(f"Ошибка при отправке сообщений в чаты: {e}")
+                    await send_admin_error(f"При отправке сообщений в чаты: {e}")
             else:
                 await send_admin_error("Информация о дежурном не найдена.")
                 logging.warning("Информация о дежурном не найдена. Сообщение отправлено админу.")
@@ -152,8 +152,10 @@ async def send_scheduled_messages():
 async def main():
     """Основная функция бота."""
     try:
-        await send_scheduled_messages()
-        await dp.start_polling(bot)
+        task1 = asyncio.create_task(send_scheduled_messages())
+        task2 = asyncio.create_task(dp.start_polling(bot))
+
+        await asyncio.gather(task1, task2)
     except Exception as e:
         logging.critical(f"Критическая ошибка: {e}")
         await send_admin_error(f"Критическая ошибка: {e}")
@@ -162,4 +164,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        logging.critical(f"Ошибка при запуске бота: {e}")
+        logging.critical(f"При запуске бота: {e}")
