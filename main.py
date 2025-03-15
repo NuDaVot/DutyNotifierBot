@@ -144,7 +144,7 @@ async def send_scheduled_messages():
         if (now.hour == 9 and now.minute == 30) or (now.hour == 21 and now.minute == 30):
             shift_label = "день" if now.hour == 9 else "ночь"
             duty_name, duty_phone = await get_duty_info(shift_label)
-            start_message = "Сегодня с 10:00 до 22:00,\n" if shift_label == "День" else "Сегодня с 22:00 до 10:00,\n"
+            start_message = "Сегодня с 10:00 до 22:00,\n" if now.hour == 9 else "Сегодня с 22:00 до 10:00,\n"
             if duty_name and duty_phone:
                 message = (
                     start_message +
