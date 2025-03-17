@@ -83,38 +83,44 @@ async def get_duty_info(shift_label: str) -> tuple:
     try:
         schedule_rows = await fetch_csv(SCHEDULE_URL)
         today = datetime.datetime.now()
-        today_str = today.strftime("%d.%m.%Y")
-        weekday = today.strftime("%A").lower()  # Получаем день недели на английском
-        weekday_ru = {
-            "monday": "Понедельник",
-            "tuesday": "Вторник",
-            "wednesday": "Среда",
-            "thursday": "Четверг",
-            "friday": "Пятница",
-            "saturday": "Суббота",
-            "sunday": "Воскресенье"
-        }[weekday]  # Преобразуем в русский язык
+
+        weekday_mapping = {
+            "Monday": "Понедельник",
+            "Tuesday": "Вторник",
+            "Wednesday": "Среда",
+            "Thursday": "Четверг",
+            "Friday": "Пятница",
+            "Saturday": "Суббота",
+            "Sunday": "Воскресенье",
+        }
+        weekday_en = today.strftime("%A")
+        weekday_ru = weekday_mapping.get(weekday_en, "")
+        target_shift = f"{weekday_ru} {shift_label}"  # Например, "Пятница ночь"
 
         duty_name = None
+        current_period_valid = False
 
-        # Ищем период, куда попадает сегодняшняя дата
         for row in schedule_rows:
-            if "Период" in row and row["Период"]:
+            period_cell = row["Период"].strip()
+            duty_cell = row["Дежурный"].strip()
+
+            # Если в ячейке есть символ "-", считаем, что это строка с периодом
+            if "-" in period_cell:
                 try:
-                    period_start, period_end = row["Период"].split("-")
-                    period_start = datetime.datetime.strptime(period_start.strip(), "%d.%m.%Y")
-                    period_end = datetime.datetime.strptime(period_end.strip(), "%d.%m.%Y")
+                    period_start_str, period_end_str = period_cell.split("-")
+                    period_start = datetime.datetime.strptime(period_start_str.strip(), "%d.%m.%Y")
+                    period_end = datetime.datetime.strptime(period_end_str.strip(), "%d.%m.%Y")
+                    current_period_valid = (period_start <= today <= period_end)
+                except Exception as e:
+                    logging.error(f"Ошибка при разборе периода '{period_cell}': {e}")
+                    await send_admin_error(f"При разборе периода '{period_cell}': {e}")
+                    current_period_valid = False
+                continue
 
-                    if period_start <= today <= period_end:
-                        break  # Нашли нужный период, переходим к поиску смены
-                except ValueError:
-                    continue  # Пропускаем некорректный формат
-
-        # Ищем нужного дежурного
-        for row in schedule_rows:
-            shift_column = f"{weekday_ru} {shift_label}"  # Формируем название колонки, например, "Среда день"
-            if shift_column in row.values():
-                duty_name = row['Дежурный'].strip()
+            # Если текущая строка не периодная и текущий период валиден,
+            # сравниваем значение в первой колонке с требуемой сменой.
+            if current_period_valid and period_cell == target_shift:
+                duty_name = duty_cell
                 break
 
         if not duty_name:
