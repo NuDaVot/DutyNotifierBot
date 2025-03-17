@@ -110,7 +110,7 @@ async def get_duty_info(shift_label: str) -> tuple:
                     period_start_str, period_end_str = period_cell.split("-")
                     period_start = datetime.datetime.strptime(period_start_str.strip(), "%d.%m.%Y")
                     period_end = datetime.datetime.strptime(period_end_str.strip(), "%d.%m.%Y")
-                    current_period_valid = (period_start <= today <= period_end)
+                    current_period_valid = (period_start.date() <= today.date() <= period_end.date())
                 except Exception as e:
                     logging.error(f"Ошибка при разборе периода '{period_cell}': {e}")
                     await send_admin_error(f"При разборе периода '{period_cell}': {e}")
