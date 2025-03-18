@@ -141,16 +141,21 @@ async def get_duty_info(shift_label: str) -> tuple:
         await send_admin_error(f"При получении дежурного: {e}")
         return None, None
 
+DAY_HOUR_FOR_SENT = 9
+EVENING_HOUR_FOR_SENT = 21
+MINUTES_FOR_SENT = 30
+TIME_SLEEP = 60
+
 
 async def send_scheduled_messages():
     """Отправляет сообщение в чаты в 9:30 и 21:30."""
     while True:
         now = datetime.datetime.now()
 
-        if (now.hour == 9 and now.minute == 30) or (now.hour == 21 and now.minute == 30):
-            shift_label = "день" if now.hour == 9 else "ночь"
+        if (now.hour == DAY_HOUR_FOR_SENT and now.minute == MINUTES_FOR_SENT) or (now.hour == EVENING_HOUR_FOR_SENT and now.minute == MINUTES_FOR_SENT):
+            shift_label = "день" if now.hour == DAY_HOUR_FOR_SENT else "ночь"
             duty_name, duty_phone = await get_duty_info(shift_label)
-            start_message = "Сегодня с 10:00 до 22:00,\n" if now.hour == 9 else "Сегодня с 22:00 до 10:00,\n"
+            start_message = "Сегодня с 10:00 до 22:00,\n" if now.hour == DAY_HOUR_FOR_SENT else "Сегодня с 22:00 до 10:00,\n"
             if duty_name and duty_phone:
                 message = (
                     start_message +
@@ -177,7 +182,7 @@ async def send_scheduled_messages():
                 await send_admin_error("Информация о дежурном не найдена.")
                 logging.warning("Информация о дежурном не найдена. Сообщение отправлено админу.")
 
-        await asyncio.sleep(60)  # Задержка 1 минута
+        await asyncio.sleep(TIME_SLEEP)  # Задержка 1 минута
 
 
 async def main():
