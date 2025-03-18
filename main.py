@@ -95,7 +95,7 @@ async def get_duty_info(shift_label: str) -> tuple:
         }
         weekday_en = today.strftime("%A")
         weekday_ru = weekday_mapping.get(weekday_en, "")
-        target_shift = f"{weekday_ru} {shift_label}"  # Например, "Пятница ночь"
+        # target_shift = f"{weekday_ru} {shift_label}"  # Например, "Пятница ночь"
 
         duty_name = None
         current_period_valid = False
@@ -119,7 +119,7 @@ async def get_duty_info(shift_label: str) -> tuple:
 
             # Если текущая строка не периодная и текущий период валиден,
             # сравниваем значение в первой колонке с требуемой сменой.
-            if current_period_valid and period_cell == target_shift:
+            if current_period_valid and (weekday_ru in period_cell and shift_label in period_cell):
                 duty_name = duty_cell
                 break
 
